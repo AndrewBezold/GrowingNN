@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="[%d{HH:mm:ss.SSS}] %-5level - %msg%n"/>
+    </Console>
+    <Routing name="RoutingAppender">
+      <Routes pattern="${ctx:logFileName}">
+        <Route>
+          <File name="MyFile" fileName="logs/GrowingNN${ctx:logFileName}.log">
+            <PatternLayout>
+              <Pattern>[%d{HH:mm:ss.SSS}] %-5level - %msg%n</Pattern>
+            </PatternLayout>
+          </File>
+        </Route>
+      </Routes>
+    </Routing>
+    
+    <Async name="FileAsync">
+      <AppenderRef ref="RoutingAppender"/>
+    </Async>
+    <Async name="ConsoleAsync">
+      <AppenderRef ref="Console"/>
+    </Async>
+  </Appenders>
+  <Loggers>
+    <Root level="info">
+      <AppenderRef ref="FileAsync"/>
+      <AppenderRef ref="ConsoleAsync"/>
+    </Root>
+  </Loggers>
+</Configuration>
