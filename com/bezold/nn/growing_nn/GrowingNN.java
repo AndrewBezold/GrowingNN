@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Random;
 
 import no.uib.cipr.matrix.DenseMatrix;
 import no.uib.cipr.matrix.Matrix;
@@ -29,6 +30,9 @@ public class GrowingNN implements Cloneable{
 	double b1 = .9;
 	double b2 = .999;
 	double e = .0001;
+	
+	double dropoutRate = .2;
+	Random random;
 	
 	public GrowingNN(int inputSize, int hiddenSize, int outputSize){
 		this(inputSize, new int[]{hiddenSize}, outputSize);
@@ -73,6 +77,7 @@ public class GrowingNN implements Cloneable{
 			}
 		}
 		t = 0;
+		random = new Random();
 	}
 	
 	public GrowingNN(GrowingNN network){
@@ -152,12 +157,13 @@ public class GrowingNN implements Cloneable{
 		b1 = network.b1;
 		b2 = network.b2;
 		e = network.e;
+		random = new Random();
 		
 	}
 	
-	public double[][] feedForward(double[][] inputs){
+	public double[][] feedForward(double[][] inputs, double dropoutRate, boolean dropout){
 		inputLayer = new DenseMatrix(inputs);
-		outputLayer = feedForward(inputLayer);
+		outputLayer = feedForward(inputLayer, dropoutRate, dropout);
 		double[][] outputs = new double[outputLayer.numRows()][outputLayer.numColumns()];
 		for(int i = 0; i < outputs.length; i++){
 			for(int j = 0; j < outputs[i].length; j++){
@@ -167,7 +173,7 @@ public class GrowingNN implements Cloneable{
 		return outputs;
 	}
 	
-	public Matrix feedForward(Matrix inputs){
+	public Matrix feedForward(Matrix inputs, double dropoutRate, boolean dropout){
 		inputLayer = inputs;
 		hiddenLayer = new ArrayList<Matrix>(hiddenSize.length);
 		ArrayList<Matrix> biases = resizeBiases(this.biases, inputs);
@@ -177,6 +183,16 @@ public class GrowingNN implements Cloneable{
 			}else{
 				hiddenLayer.add(tanh(hiddenLayer.get(i-1).multAdd(matrices.get(i), biases.get(i).copy())));
 			}
+			if(dropout){
+				for(int j = 0; j < hiddenLayer.get(i).numRows(); j++){
+					for(int k = 0; k < hiddenLayer.get(i).numColumns(); k++){
+						if(random.nextDouble() < dropoutRate){
+							hiddenLayer.get(i).set(j, k, 0);
+						}
+					}
+				}
+				hiddenLayer.get(i).scale(1/(1-dropoutRate));
+			}
 		}
 		outputLayer = tanh(hiddenLayer.get(hiddenLayer.size()-1).multAdd(matrices.get(matrices.size()-1), biases.get(biases.size()-1).copy()));
 		return outputLayer;
@@ -184,7 +200,7 @@ public class GrowingNN implements Cloneable{
 	
 	public Matrix[] gradients(Matrix inputs, Matrix expectedOutput){
 		//make gradients of biases
-		Matrix output = feedForward(inputs);
+		Matrix output = feedForward(inputs, dropoutRate, true);
 		Matrix error = output.copy().add(-1, expectedOutput);
 		//change weight by derivative of error
 		Matrix[] delta = new Matrix[matrices.size()];
@@ -280,7 +296,7 @@ public class GrowingNN implements Cloneable{
 	public double[] verify(double[][] inputs, int[] expectedOutput){
 		double accuracy = 0;
 		double absError = 0;
-		double[][] output = feedForward(inputs);
+		double[][] output = feedForward(inputs, 0, false);
 		for(int i = 0; i < output.length; i++){
 			int max = 0;
 			for(int j = 1; j < output[i].length; j++){
@@ -306,7 +322,7 @@ public class GrowingNN implements Cloneable{
 	
 	public double verify(double[][] inputs, double[][] expectedOutput){
 		double absError = 0;
-		double[][] output = feedForward(inputs);
+		double[][] output = feedForward(inputs, 0, false);
 		for(int i = 0; i < output.length; i++){
 			for(int j = 0; j < output[i].length; j++){
 				absError += Math.abs(expectedOutput[i][j] - output[i][j]);
@@ -550,6 +566,7 @@ public class GrowingNN implements Cloneable{
 		clone.b1 = b1;
 		clone.b2 = b2;
 		clone.e = e;
+		clone.random = new Random();
 		return clone;
 	}
 
