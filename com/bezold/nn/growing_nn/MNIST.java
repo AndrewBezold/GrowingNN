@@ -22,9 +22,9 @@ import com.bezold.mnist.DigitImageLoadingService;
  * Hello world!
  *
  */
-public class MNIST 
+public class MNIST2 
 {
-	public GrowingNN[] network;
+	public GrowingNN network;
 	private static final Logger log = LogManager.getLogger();
 	private static final int LOW_NUMBER_OF_NETWORKS = 10;
 	
@@ -37,13 +37,12 @@ public class MNIST
 	    	String mnistTrainLabelFilename = "C:/Users/Beez/Downloads/MNIST/train-labels.idx1-ubyte";
 	    	String mnistTestImageFilename = "C:/Users/Beez/Downloads/MNIST/t10k-images.idx3-ubyte";
 	    	String mnistTestLabelFilename = "C:/Users/Beez/Downloads/MNIST/t10k-labels.idx1-ubyte";
-	    	MNIST mnist = new MNIST();
-	    	mnist.network = new GrowingNN[1];
-	    	mnist.network[0] = new GrowingNN(784, 3, 10);
+	    	MNIST2 mnist = new MNIST2();
+	    	mnist.network = new GrowingNN(784, 3, 10);
 	        	mnist.train(mnistTrainLabelFilename, mnistTrainImageFilename);
 	        	mnist.test(mnistTestLabelFilename, mnistTestImageFilename);
 	        	//output network
-	        	mnist.network[0].output("GrowingNN" + time + ".network");
+	        	mnist.network.output("GrowingNN" + time + ".network");
         } catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -51,6 +50,8 @@ public class MNIST
     }
     
     public void train(String labelFilename, String imageFilename) throws IOException{
+    	int newLayerNeurons = 0;
+    	
         DigitImageLoadingService mnistTrainImport = new DigitImageLoadingService(labelFilename, imageFilename);
 		DigitImage[] mnistFull = mnistTrainImport.loadDigitImages().toArray(new DigitImage[0]);
 		DigitImage[] mnistTrain = new DigitImage[59000];
@@ -78,16 +79,12 @@ public class MNIST
 		}
 		shuffle(mnistTrain);
 		int batchSize = 50;
-		int numEpochs = 1;
+		int numEpochs = 10;
 		int iterator = 0;
 		int epoch = 1;
-		double[] layerCheck = new double[]{0};
-		double[][] neuronCheck = new double[1][network[0].hiddenSize.length];
-		for(int i = 0; i < neuronCheck.length; i++){
-			neuronCheck[0][i] = 0;
-		}
-		boolean reset = false;
-		boolean fullReset = false;
+		boolean endOfEpoch = false;
+		double startError = 0;
+		double currentError = 0;
 		DigitImage[] batch;
 		for(int num = 0; num < mnistTrain.length * numEpochs + batchSize; num += batchSize){
 			int thisSize;
@@ -97,16 +94,56 @@ public class MNIST
 				thisSize = batchSize;
 			}
 			if(thisSize > 0){
-				System.out.println("Batch " + ((num/batchSize) + 1) + ", Networks: " + network.length);
+				//System.out.println("Batch " + ((num/batchSize) + 1));
 				batch = new DigitImage[thisSize];
 				for(int i = 0; i < thisSize; i++){
 					if(iterator >= mnistTrain.length){
 						shuffle(mnistTrain);
 						iterator = 0;
 						epoch++;
+						endOfEpoch = true;
 					}
 					batch[i] = mnistTrain[iterator];
 					iterator++;
+				}
+				//grow network if finished epoch last minibatch
+				if(endOfEpoch){
+					System.out.println("End Epoch Test");
+					endOfEpoch = false;
+					//add neurons based on current error and error decrease over batch
+					//higher error = more neurons
+					//higher decrease = less neurons
+					//number of added neurons decreases the deeper you go
+					//add layer based on idk.  If number of neurons added at said layer passes minimum threshold?
+					//if so, keep track of number of neurons to be added until it passes the minimum threshold
+					int numNeurons;
+					
+					//500 new neurons at 10 error and 0 error decrease
+					//0 new neurons at 0 error
+					//new neurons change proportional to newError/oldError?
+					numNeurons = (int) (500*(1/(1+Math.exp(0.5*((currentError-startError)-5))))*(1/(1+Math.exp(-0.5*((currentError)+5)))));
+					System.out.println(numNeurons + " " + currentError + " " + startError);
+					boolean keepAdding = true;
+					int layer = 2;
+					while(keepAdding){
+						System.out.println("Keep Adding " + (layer-2));
+						if(layer < network.hiddenSize.length+2){
+							System.out.println("if");
+							network.addNeuron(layer, numNeurons);
+							layer++;
+						}else{
+							System.out.println("else");
+							newLayerNeurons += numNeurons;
+							if(newLayerNeurons >= network.outputSize){
+								System.out.println("if2");
+								network.addLayer();
+								newLayerNeurons = 0;
+							}
+							keepAdding = false;
+						}
+						numNeurons /= 5;
+					}
+					startError = 0;
 				}
 				double[][] image = new double[batch.length][784];
 				double[][] label = new double[batch.length][10];
@@ -123,187 +160,25 @@ public class MNIST
 					}
 				}
 				//train batch
-				Vector<GrowingNN> newNetworks = new Vector<GrowingNN>();
-				for(int i = 0; i < network.length; i++){
-					Matrix[] g = network[i].adam(image, label, network[i].learningRate, network[i].b1, network[i].b2, network[i].e);
-					//verify against trained images
-					double accuracy = network[i].verify(verifyImage, verifyLabelNum);
-					g = network[i].gradients(new DenseMatrix(verifyImage), new DenseMatrix(verifyLabel));
-					//log accuracy
-					if((((num/batchSize)%mnistTrain.length)+1)%100 == 0){
-						String shape = "" + network[i].inputSize;
-						for(int j = 0; j < network[i].hiddenSize.length; j++){
-							shape += " " + network[i].hiddenSize[j];
-						}
-						shape += " " + network[i].outputSize;
-						System.out.println("Networks: " + network.length);
-						log.info("Epoch " + epoch + ", Batch " + ((num/batchSize)%mnistTrain.length+1) + ": " + accuracy + ";  Network Shape: " + shape);
-					}
-					//set limits for adding layers or neurons
-					newNetworks.add(new GrowingNN(network[i]));
-					for(int j = 0; j < neuronCheck[i].length; j++){
-						double sum = 0;
-						int count = 1;
-						Matrix abs = abs(g[count]);
-						for(int k = 0; k < g[count].numRows(); k++){
-							for(int l = 0; l < g[count].numColumns(); l++){
-								sum += abs.get(k, l);
-							}
-						}
-						count++;
-						abs = abs(g[count]);
-						for(int k = 0; k < g[count].numRows(); k++){
-							for(int l = 0; l < g[count].numColumns(); l++){
-								sum += abs.get(k, l);
-							}
-						}
-						double avg = sum/(double)(g[count-1].numRows()*g[count-1].numColumns() + g[count].numRows()*g[count].numColumns());
-						if(neuronCheck[i][j] == 0){
-							neuronCheck[i][j] = avg;
-						}else if(avg/neuronCheck[i][j] < 1){
-							if(avg / neuronCheck[i][j] > .5){
-								if(network[i].hiddenSize.length <= j){
-									System.out.println(network[i].hiddenSize.length);
-									System.out.println(neuronCheck[i].length);
-								}
-								network[i].addNeuron(j+2);
-								reset = true;
-							}else{
-								neuronCheck[i][j] = avg;
-							}
-						}
-					}
-					Matrix one = new DenseMatrix(g[g.length-1].numColumns(), 1);
-					for(int j = 0; j < one.numRows(); j++){
-						one.set(j, 0, 1);
-					}
-					Matrix avgError = new DenseMatrix(1, 1);
-					avgError = abs(g[g.length-1]).mult(1/(double)g[g.length-1].numColumns(), one, avgError);
-					if(layerCheck[i] == 0){
-						layerCheck[i] = avgError.get(0, 0);
-					}else if(avgError.get(0, 0)/layerCheck[i] < 1){
-						if(avgError.get(0, 0) / layerCheck[i] > .995){
-							network[i].addLayer();
-							reset = true;
-						}else{
-							layerCheck[i] = avgError.get(0, 0);
-						}
-					}
-					if(reset){
-						reset = false;
-						fullReset = true;
-						layerCheck[i] = 0;
-						neuronCheck[i] = new double[network[i].hiddenLayer.length];
-						for(int j = 0; j < neuronCheck[i].length; j++){
-							neuronCheck[i][j] = 0;
-						}
-						//make sure new network isn't same architecture as existing network
-						boolean same = true;
-						for(int j = i; j < network.length; j++){
-							if(network[i].hiddenLayer.length == network[j].hiddenLayer.length){
-								for(int k = 0; k < network[i].hiddenLayer.length; k++){
-									if(network[i].hiddenSize[k] != network[j].hiddenSize[k]){
-										same = false;
-									}
-								}
-							}else{
-								same = false;
-							}
-						}
-						for(int j = 0; j < newNetworks.size(); j++){
-							if(network[i].hiddenLayer.length == newNetworks.get(j).hiddenLayer.length){
-								for(int k = 0; k < network[i].hiddenLayer.length; k++){
-									if(network[i].hiddenSize[k] != newNetworks.get(j).hiddenSize[k]){
-										same = false;
-									}
-								}
-							}else{
-								same = false;
-							}
-						}
-						if(!same){
-							newNetworks.add(new GrowingNN(network[i]));
-						}
-					}	
+				Matrix[] g = network.adam(image, label, network.learningRate, network.b1, network.b2, network.e);
+				//verify against trained images
+				double[] accuracy = network.verify(verifyImage, verifyLabelNum);
+				if(startError == 0){
+					startError = accuracy[1];
 				}
-				//cycle through new networks, deleting old networks if there are bigger ones that are better
-				Vector<Double> accuracy = new Vector<Double>();
-				for(int i = 0; i < newNetworks.size(); i++){
-					accuracy.add(newNetworks.get(i).verify(verifyImage, verifyLabelNum));
-				}
-				Vector<Integer> remove = new Vector<Integer>();
-				for(int i = 0; i < newNetworks.size(); i++){
-					for(int j = 0; j < newNetworks.size(); j++){
-						if(i != j){
-							boolean sameOrSmaller = true;
-							if(newNetworks.get(i).hiddenSize.length > newNetworks.get(j).hiddenSize.length){
-								sameOrSmaller = false;
-							}else if(newNetworks.get(i).hiddenSize.length == newNetworks.get(j).hiddenSize.length){
-								for(int k = 0; k < newNetworks.get(i).hiddenSize.length; k++){
-									if(newNetworks.get(i).hiddenSize[k] > newNetworks.get(j).hiddenSize[k]){
-										sameOrSmaller = false;
-									}
-								}
-							}
-							if(sameOrSmaller){
-								//check fitness
-								//if old fitness worse than new fitness, delete old network
-								if(accuracy.get(i) < accuracy.get(j)){
-									if(!remove.contains(i)){
-										remove.add(i);
-									}
-								}
-							}
-						}
+				currentError = accuracy[1];
+				g = network.gradients(new DenseMatrix(verifyImage), new DenseMatrix(verifyLabel));
+				//log accuracy
+				if((((num/batchSize)%mnistTrain.length)+1)%100 == 0){
+					String shape = "" + network.inputSize;
+					for(int j = 0; j < network.hiddenSize.length; j++){
+						shape += " " + network.hiddenSize[j];
 					}
+					shape += " " + network.outputSize;
+					log.info("Epoch " + epoch + ", Batch " + (((num/batchSize)%mnistTrain.length)+1) + ": " + accuracy[0] + ";  Network Shape: " + shape);
 				}
-				for(int i = remove.size() - 1; i >= 0; i--){
-					newNetworks.remove((int)remove.get(i));
-					accuracy.remove((int)remove.get(i));
-				}
-				if(newNetworks.size() >= 100){
-					remove.clear();
-					for(int i = 0; i < newNetworks.size() - LOW_NUMBER_OF_NETWORKS; i++){
-						int worst = -1;
-						for(int j = 0; j < newNetworks.size(); j++){
-							if(!remove.contains(j)){
-								if(worst == -1){
-									worst = j;
-								}else{
-									if(accuracy.get(j) < accuracy.get(worst)){
-										worst = j;
-									}
-								}
-							}
-						}
-						remove.add(worst);
-					}
-					int[] removeArray = new int[remove.size()];
-					for(int i = 0; i < remove.size(); i++){
-						removeArray[i] = remove.get(i);
-					}
-					Arrays.sort(removeArray);
-					for(int i = removeArray.length - 1; i >= 0; i--){
-						newNetworks.remove(removeArray[i]);
-						accuracy.remove(removeArray[i]);
-					}
-				}
-				remove.clear();
-				accuracy.clear();
-				network = newNetworks.toArray(new GrowingNN[0]);
-				newNetworks.clear();
-				if(fullReset){
-					fullReset = false;
-					layerCheck = new double[network.length];
-					neuronCheck = new double[network.length][];
-					for(int i = 0; i < network.length; i++){
-						layerCheck[i] = 0;
-						neuronCheck[i] = new double[network[i].hiddenSize.length];
-						for(int j = 0; j < neuronCheck[i].length; j++){
-							neuronCheck[i][j] = 0;
-						}
-					}
-				}
+				//set limits for adding layers or neurons
+				
 			}
 		}
     }
@@ -317,16 +192,9 @@ public class MNIST
 			image[i] = mnistTest[i].getData();
 			label[i] = mnistTest[i].getLabel();
 		}
-		double[] accuracy = new double[network.length];
-		int best = 0;
-		for(int i = 0; i < accuracy.length; i++){
-			accuracy[i] = network[i].verify(image, label);
-			if(accuracy[i] > accuracy[best]){
-				best = i;
-			}
-		}
+		double accuracy = network.verify(image, label)[0];
 		//log accuracy
-		log.info("Test: " + accuracy[best]);
+		log.info("Test: " + accuracy);
     }
     
     

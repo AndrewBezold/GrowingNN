@@ -3,6 +3,7 @@ package com.bezold.nn.growing_nn;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import no.uib.cipr.matrix.DenseMatrix;
 import no.uib.cipr.matrix.Matrix;
@@ -13,15 +14,15 @@ public class GrowingNN implements Cloneable{
 	int[] hiddenSize;
 	int outputSize;
 	
-	Matrix[] matrices;
-	Matrix[] biases;
+	ArrayList<Matrix> matrices;
+	ArrayList<Matrix> biases;
 	
 	Matrix inputLayer;
-	Matrix[] hiddenLayer;
+	ArrayList<Matrix> hiddenLayer;
 	Matrix outputLayer;
 	
-	Matrix[] m;
-	Matrix[] v;
+	ArrayList<Matrix> m;
+	ArrayList<Matrix> v;
 	int t;
 	
 	double learningRate = .001;
@@ -38,36 +39,36 @@ public class GrowingNN implements Cloneable{
 		this.hiddenSize = hiddenSize;
 		this.outputSize = outputSize;
 		
-		matrices = new Matrix[hiddenSize.length+1];
-		for(int i = 0; i < matrices.length; i++){
+		matrices = new ArrayList<Matrix>(hiddenSize.length+1);
+		for(int i = 0; i < hiddenSize.length+1; i++){
 			if(i==0){
-				matrices[i] = initWeights(inputSize, hiddenSize[0]);
-			}else if(i==matrices.length-1){
-				matrices[i] = initWeights(hiddenSize[i-1], outputSize);
+				matrices.add(initWeights(inputSize, hiddenSize[0]));
+			}else if(i==hiddenSize.length){
+				matrices.add(initWeights(hiddenSize[i-1], outputSize));
 			}else{
-				matrices[i] = initWeights(hiddenSize[i-1], hiddenSize[i]);
+				matrices.add(initWeights(hiddenSize[i-1], hiddenSize[i]));
 			}
 		}
 		
-		biases = new Matrix[hiddenSize.length+1];
-		for(int i = 0; i < biases.length; i++){
-			if(i==biases.length-1){
-				biases[i] = initWeights(1, outputSize);
+		biases = new ArrayList<Matrix>(hiddenSize.length+1);
+		for(int i = 0; i < hiddenSize.length+1; i++){
+			if(i==hiddenSize.length){
+				biases.add(initWeights(1, outputSize));
 			}else{
-				biases[i] = initWeights(1, hiddenSize[i]);
+				biases.add(initWeights(1, hiddenSize[i]));
 			}
 		}
 		
-		m = new Matrix[matrices.length + biases.length];
-		v = new Matrix[matrices.length + biases.length];
+		m = new ArrayList<Matrix>(matrices.size() + biases.size());
+		v = new ArrayList<Matrix>(matrices.size() + biases.size());
 		int count = 0;
-		for(int i = 0; i < m.length; i++){
+		for(int i = 0; i < matrices.size()+biases.size(); i++){
 			if(i%2==0){
-				m[i] = new DenseMatrix(matrices[count].numRows(), matrices[count].numColumns()).zero();
-				v[i] = new DenseMatrix(matrices[count].numRows(), matrices[count].numColumns()).zero();
+				m.add(new DenseMatrix(matrices.get(count).numRows(), matrices.get(count).numColumns()).zero());
+				v.add(new DenseMatrix(matrices.get(count).numRows(), matrices.get(count).numColumns()).zero());
 			}else{
-				m[i] = new DenseMatrix(biases[count].numRows(), biases[count].numColumns()).zero();
-				v[i] = new DenseMatrix(biases[count].numRows(), biases[count].numColumns()).zero();
+				m.add(new DenseMatrix(biases.get(count).numRows(), biases.get(count).numColumns()).zero());
+				v.add(new DenseMatrix(biases.get(count).numRows(), biases.get(count).numColumns()).zero());
 				count++;
 			}
 		}
@@ -81,25 +82,25 @@ public class GrowingNN implements Cloneable{
 			hiddenSize[i] = network.hiddenSize[i];
 		}
 		outputSize = network.outputSize;
-		matrices = new Matrix[network.matrices.length];
-		for(int i = 0; i < network.matrices.length; i++){
-			double[][] matrixArray = new double[network.matrices[i].numRows()][network.matrices[i].numColumns()];
-			for(int j = 0; j < network.matrices[i].numRows(); j++){
-				for(int k = 0; k < network.matrices[i].numColumns(); k++){
-					matrixArray[j][k] = network.matrices[i].get(j, k);
+		matrices = new ArrayList<Matrix>(network.matrices.size());
+		for(int i = 0; i < network.matrices.size(); i++){
+			double[][] matrixArray = new double[network.matrices.get(i).numRows()][network.matrices.get(i).numColumns()];
+			for(int j = 0; j < network.matrices.get(i).numRows(); j++){
+				for(int k = 0; k < network.matrices.get(i).numColumns(); k++){
+					matrixArray[j][k] = network.matrices.get(i).get(j, k);
 				}
 			}
-			matrices[i] = new DenseMatrix(matrixArray);
+			matrices.add(new DenseMatrix(matrixArray));
 		}
-		biases = new Matrix[network.biases.length];
-		for(int i = 0; i < network.biases.length; i++){
-			double[][] biasArray = new double[network.biases[i].numRows()][network.biases[i].numColumns()];
-			for(int j = 0; j < network.biases[i].numRows(); j++){
-				for(int k = 0; k < network.biases[i].numColumns(); k++){
-					biasArray[j][k] = network.biases[i].get(j, k);
+		biases = new ArrayList<Matrix>(network.biases.size());
+		for(int i = 0; i < network.biases.size(); i++){
+			double[][] biasArray = new double[network.biases.get(i).numRows()][network.biases.get(i).numColumns()];
+			for(int j = 0; j < network.biases.get(i).numRows(); j++){
+				for(int k = 0; k < network.biases.get(i).numColumns(); k++){
+					biasArray[j][k] = network.biases.get(i).get(j, k);
 				}
 			}
-			biases[i] = new DenseMatrix(biasArray);
+			biases.add(new DenseMatrix(biasArray));
 		}
 		double[][] inputArray = new double[network.inputLayer.numRows()][network.inputLayer.numColumns()];
 		for(int j = 0; j < network.inputLayer.numRows(); j++){
@@ -108,15 +109,15 @@ public class GrowingNN implements Cloneable{
 			}
 		}
 		inputLayer = new DenseMatrix(inputArray);
-		hiddenLayer = new Matrix[network.hiddenLayer.length];
-		for(int i = 0; i < network.hiddenLayer.length; i++){
-			double[][] hiddenArray = new double[network.hiddenLayer[i].numRows()][network.hiddenLayer[i].numColumns()];
-			for(int j = 0; j < network.hiddenLayer[i].numRows(); j++){
-				for(int k = 0; k < network.hiddenLayer[i].numColumns(); k++){
-					hiddenArray[j][k] = network.hiddenLayer[i].get(j, k);
+		hiddenLayer = new ArrayList<Matrix>(network.hiddenLayer.size());
+		for(int i = 0; i < network.hiddenLayer.size(); i++){
+			double[][] hiddenArray = new double[network.hiddenLayer.get(i).numRows()][network.hiddenLayer.get(i).numColumns()];
+			for(int j = 0; j < network.hiddenLayer.get(i).numRows(); j++){
+				for(int k = 0; k < network.hiddenLayer.get(i).numColumns(); k++){
+					hiddenArray[j][k] = network.hiddenLayer.get(i).get(j, k);
 				}
 			}
-			hiddenLayer[i] = new DenseMatrix(hiddenArray);
+			hiddenLayer.add(new DenseMatrix(hiddenArray));
 		}
 		double[][] outputArray = new double[network.outputLayer.numRows()][network.outputLayer.numColumns()];
 		for(int j = 0; j < network.outputLayer.numRows(); j++){
@@ -125,25 +126,25 @@ public class GrowingNN implements Cloneable{
 			}
 		}
 		outputLayer = new DenseMatrix(outputArray);
-		m = new Matrix[network.m.length];
-		for(int i = 0; i < network.m.length; i++){
-			double[][] mArray = new double[network.m[i].numRows()][network.m[i].numColumns()];
-			for(int j = 0; j < network.m[i].numRows(); j++){
-				for(int k = 0; k < network.m[i].numColumns(); k++){
-					mArray[j][k] = network.m[i].get(j, k);
+		m = new ArrayList<Matrix>(network.m.size());
+		for(int i = 0; i < network.m.size(); i++){
+			double[][] mArray = new double[network.m.get(i).numRows()][network.m.get(i).numColumns()];
+			for(int j = 0; j < network.m.get(i).numRows(); j++){
+				for(int k = 0; k < network.m.get(i).numColumns(); k++){
+					mArray[j][k] = network.m.get(i).get(j, k);
 				}
 			}
-			m[i] = new DenseMatrix(mArray);
+			m.add(new DenseMatrix(mArray));
 		}
-		v = new Matrix[network.v.length];
-		for(int i = 0; i < network.v.length; i++){
-			double[][] vArray = new double[network.v[i].numRows()][network.v[i].numColumns()];
-			for(int j = 0; j < network.v[i].numRows(); j++){
-				for(int k = 0; k < network.v[i].numColumns(); k++){
-					vArray[j][k] = network.v[i].get(j, k);
+		v = new ArrayList<Matrix>(network.v.size());
+		for(int i = 0; i < network.v.size(); i++){
+			double[][] vArray = new double[network.v.get(i).numRows()][network.v.get(i).numColumns()];
+			for(int j = 0; j < network.v.get(i).numRows(); j++){
+				for(int k = 0; k < network.v.get(i).numColumns(); k++){
+					vArray[j][k] = network.v.get(i).get(j, k);
 				}
 			}
-			v[i] = new DenseMatrix(vArray);
+			v.add(new DenseMatrix(vArray));
 		}
 		
 		t = network.t;
@@ -168,62 +169,62 @@ public class GrowingNN implements Cloneable{
 	
 	public Matrix feedForward(Matrix inputs){
 		inputLayer = inputs;
-		hiddenLayer = new Matrix[hiddenSize.length];
-		Matrix[] biases = resizeBiases(this.biases, inputs);
-		for(int i = 0; i < hiddenLayer.length; i++){
+		hiddenLayer = new ArrayList<Matrix>(hiddenSize.length);
+		ArrayList<Matrix> biases = resizeBiases(this.biases, inputs);
+		for(int i = 0; i < hiddenSize.length; i++){
 			if(i==0){
-				hiddenLayer[i] = inputLayer.multAdd(matrices[i], biases[i].copy());
+				hiddenLayer.add(tanh(inputLayer.multAdd(matrices.get(i), biases.get(i).copy())));
 			}else{
-				hiddenLayer[i] = hiddenLayer[i-1].multAdd(matrices[i], biases[i].copy());
+				hiddenLayer.add(tanh(hiddenLayer.get(i-1).multAdd(matrices.get(i), biases.get(i).copy())));
 			}
 		}
-		outputLayer = hiddenLayer[hiddenLayer.length-1].multAdd(matrices[matrices.length-1], biases[biases.length-1].copy());
+		outputLayer = tanh(hiddenLayer.get(hiddenLayer.size()-1).multAdd(matrices.get(matrices.size()-1), biases.get(biases.size()-1).copy()));
 		return outputLayer;
 	}
 	
 	public Matrix[] gradients(Matrix inputs, Matrix expectedOutput){
 		//make gradients of biases
 		Matrix output = feedForward(inputs);
-		Matrix error = expectedOutput.copy().add(-1, output);
+		Matrix error = output.copy().add(-1, expectedOutput);
 		//change weight by derivative of error
-		Matrix[] delta = new Matrix[matrices.length];
-		Matrix[] deltaBias = new Matrix[matrices.length];
-		Matrix[] dW = new Matrix[matrices.length];
-		Matrix[] dWBias = new Matrix[matrices.length];
-		for(int i = matrices.length-1; i >= 0; i--){
-			if(i==matrices.length-1){
+		Matrix[] delta = new Matrix[matrices.size()];
+		Matrix[] deltaBias = new Matrix[matrices.size()];
+		Matrix[] dW = new Matrix[matrices.size()];
+		Matrix[] dWBias = new Matrix[matrices.size()];
+		for(int i = matrices.size()-1; i >= 0; i--){
+			if(i==matrices.size()-1){
 				Matrix derivative = dTanh(output);
-				delta[i] = elementMult(error.copy().scale(-1), derivative);
-				deltaBias[i] = elementMult(error.copy().scale(-1), derivative);
+				delta[i] = elementMult(error, derivative);
+				deltaBias[i] = elementMult(error, derivative);
 			}else{
-				Matrix derivative = dTanh(hiddenLayer[i]);
-				delta[i] = new DenseMatrix(delta[i+1].numRows(), matrices[i+1].numRows());
-				delta[i] = elementMult(delta[i+1].transBmult(matrices[i+1].copy(), delta[i]), derivative);
-				deltaBias[i] = new DenseMatrix(delta[i+1].numRows(), matrices[i+1].numRows());
-				deltaBias[i] = elementMult(delta[i+1].transBmult(matrices[i+1].copy(), deltaBias[i]), derivative);
+				Matrix derivative = dTanh(hiddenLayer.get(i));
+				delta[i] = new DenseMatrix(delta[i+1].numRows(), matrices.get(i+1).numRows());
+				delta[i] = elementMult(delta[i+1].transBmult(matrices.get(i+1).copy(), delta[i]), derivative);
+				deltaBias[i] = new DenseMatrix(delta[i+1].numRows(), matrices.get(i+1).numRows());
+				deltaBias[i] = elementMult(delta[i+1].transBmult(matrices.get(i+1).copy(), deltaBias[i]), derivative);
 			}
 			if(i!=0){
-				dW[i] = new DenseMatrix(matrices[i].numRows(), matrices[i].numColumns());
-				dW[i] = tanh(hiddenLayer[i-1]).copy().transAmult(delta[i], dW[i]);
-				dWBias[i] = new DenseMatrix(biases[i].numRows(), biases[i].numColumns());
-				Matrix ones = new DenseMatrix(deltaBias[i].numRows(), biases[i].numRows());
+				dW[i] = new DenseMatrix(matrices.get(i).numRows(), matrices.get(i).numColumns());
+				tanh(hiddenLayer.get(i-1)).transAmult(delta[i], dW[i]);
+				dWBias[i] = new DenseMatrix(biases.get(i).numRows(), biases.get(i).numColumns());
+				Matrix ones = new DenseMatrix(deltaBias[i].numRows(), biases.get(i).numRows());
 				for(int j = 0; j < ones.numRows(); j++){
 					for(int k = 0; k < ones.numColumns(); k++){
 						ones.set(j, k, 1);
 					}
 				}
-				dWBias[i] = ones.transAmult(deltaBias[i], dWBias[i]);
+				ones.transAmult(deltaBias[i], dWBias[i]);
 			}else{
-				dW[i] = new DenseMatrix(matrices[i].numRows(), matrices[i].numColumns());
-				dW[i] = tanh(inputLayer).copy().transAmult(delta[i], dW[i]);
-				dWBias[i] = new DenseMatrix(biases[i].numRows(), biases[i].numColumns());
-				Matrix ones = new DenseMatrix(deltaBias[i].numRows(), biases[i].numRows());
+				dW[i] = new DenseMatrix(matrices.get(i).numRows(), matrices.get(i).numColumns());
+				tanh(inputLayer).transAmult(delta[i], dW[i]);
+				dWBias[i] = new DenseMatrix(biases.get(i).numRows(), biases.get(i).numColumns());
+				Matrix ones = new DenseMatrix(deltaBias[i].numRows(), biases.get(i).numRows());
 				for(int j = 0; j < ones.numRows(); j++){
 					for(int k = 0; k < ones.numColumns(); k++){
 						ones.set(j, k, 1);
 					}
 				}
-				dWBias[i] = ones.transAmult(deltaBias[i], dWBias[i]);
+				ones.transAmult(deltaBias[i], dWBias[i]);
 			}
 		}
 		double[][] averagingDouble = new double[1][error.numRows()];
@@ -252,31 +253,33 @@ public class GrowingNN implements Cloneable{
 	
 	public void backpropagate(double[][] inputs, double[][] expectedOutput, double learningRate){
 		Matrix[] dW = gradients(new DenseMatrix(inputs), new DenseMatrix(expectedOutput));
-		for(int i = 0; i < matrices.length; i++){
-			matrices[i] = matrices[i].add(-1, dW[i].copy().scale(learningRate));
+		for(int i = 0; i < matrices.size(); i++){
+			matrices.set(i, matrices.get(i).add(-1, dW[i].copy().scale(learningRate)));
 		}
 	}
 	
+	//speed this up
 	public Matrix[] adam(double[][] inputs, double[][] expectedOutput, double learningRate, double b1, double b2, double e){
 		t++;
 		Matrix[] g = gradients(new DenseMatrix(inputs), new DenseMatrix(expectedOutput));
 		int count = 0;
-		for(int i = 0; i < matrices.length + biases.length; i++){
-			m[i] = m[i].copy().scale(b1).add(g[i].copy().scale(1-b1));
-			v[i] = v[i].copy().scale(b2).add(elementMult(g[i], g[i]).scale(1-b2));
+		for(int i = 0; i < matrices.size() + biases.size(); i++){
+			m.get(i).scale(b1).add(g[i].copy().scale(1-b1));
+			v.get(i).scale(b2).add(elementMult(g[i], g[i]).scale(1-b2));
 			double alpha = learningRate * Math.sqrt(1 - Math.pow(b2, t))/(1-Math.pow(b1, t));
 			if(i%2==0){
-				matrices[count] = matrices[count].copy().add(-1, elementAdam(alpha, m[i], v[i], e));
+				matrices.get(count).add(-1, elementAdam(alpha, m.get(i), v.get(i), e));
 			}else{
-				biases[count] = biases[count].copy().add(-1, elementAdam(alpha, m[i], v[i], e));
+				biases.get(count).add(-1, elementAdam(alpha, m.get(i), v.get(i), e));
 				count++;
 			}
 		}
 		return g;
 	}
 	
-	public double verify(double[][] inputs, int[] expectedOutput){
+	public double[] verify(double[][] inputs, int[] expectedOutput){
 		double accuracy = 0;
+		double absError = 0;
 		double[][] output = feedForward(inputs);
 		for(int i = 0; i < output.length; i++){
 			int max = 0;
@@ -288,9 +291,29 @@ public class GrowingNN implements Cloneable{
 			if(expectedOutput[i]==max){
 				accuracy++;
 			}
+			for(int j = 0; j < output[i].length; j++){
+				if(expectedOutput[i] == j){
+					absError += Math.abs(1 - output[i][j]);
+				}else{
+					absError += Math.abs(0 - output[i][j]);
+				}
+			}
 		}
 		accuracy = accuracy / inputs.length;
-		return accuracy;
+		absError /= inputs.length;
+		return new double[]{accuracy, absError};
+	}
+	
+	public double verify(double[][] inputs, double[][] expectedOutput){
+		double absError = 0;
+		double[][] output = feedForward(inputs);
+		for(int i = 0; i < output.length; i++){
+			for(int j = 0; j < output[i].length; j++){
+				absError += Math.abs(expectedOutput[i][j] - output[i][j]);
+			}
+		}
+		absError /= inputs.length;
+		return absError;
 	}
 	
 	//set weights to between -0.1 and 0.1
@@ -308,55 +331,35 @@ public class GrowingNN implements Cloneable{
 		newHiddenSize[newHiddenSize.length-1] = outputSize;
 		hiddenSize = newHiddenSize;
 		
-		Matrix[] newMatrices = new Matrix[matrices.length+1];
-		for(int i = 0; i < matrices.length; i++){
-			newMatrices[i] = matrices[i];
-		}
-		newMatrices[newMatrices.length-1] = initWeights(outputSize, outputSize);
-		matrices = newMatrices;
+		matrices.add(initWeights(outputSize, outputSize));
 		
-		Matrix[] newBiases = new Matrix[biases.length+1];
-		for(int i = 0; i < biases.length; i++){
-			newBiases[i] = biases[i];
-		}
-		newBiases[newBiases.length-1] = initWeights(1, outputSize);
-		biases = newBiases;		
+		biases.add(initWeights(1, outputSize));
 		
-		Matrix[] newM = new Matrix[m.length+2];
-		for(int i = 0; i < m.length; i++){
-			newM[i] = m[i];
-		}
-		newM[newM.length-2] = (new DenseMatrix(outputSize, outputSize)).zero();
-		newM[newM.length-1] = (new DenseMatrix(1, outputSize)).zero();
-		m = newM;
+		m.add((new DenseMatrix(outputSize, outputSize)).zero());
+		m.add((new DenseMatrix(1, outputSize)).zero());
 		
-		Matrix[] newV = new Matrix[v.length+2];
-		for(int i = 0; i < v.length; i++){
-			newV[i] = v[i];
-		}
-		newV[newV.length-2] = (new DenseMatrix(outputSize, outputSize)).zero();
-		newV[newV.length-1] = (new DenseMatrix(1, outputSize)).zero();
-		v = newV;
+		v.add((new DenseMatrix(outputSize, outputSize)).zero());
+		v.add((new DenseMatrix(1, outputSize)).zero());
 	}
 	
 	//layernum = the layer that gets the new neuron.  Input is 1, output is last
-	public void addNeuron(int layerNum){
+	public void addNeuron(int layerNum, int numNeurons){
 		hiddenSize[layerNum-2]++;
-		matrices[layerNum-2] = addColumn(matrices[layerNum-2], true);
-		matrices[layerNum-1] = addRow(matrices[layerNum-1], true);
-		biases[layerNum-2] = addColumn(biases[layerNum-2], true);
-		m[2*(layerNum-2)] = addColumn(m[2*(layerNum-2)], false);
-		m[2*(layerNum-1)] = addRow(m[2*(layerNum-1)], false);
-		m[2*(layerNum-2)+1] = addColumn(m[2*(layerNum-2)+1], false);
-		v[2*(layerNum-2)] = addColumn(v[2*(layerNum-2)], false);
-		v[2*(layerNum-1)] = addRow(v[2*(layerNum-1)], false);
-		v[2*(layerNum-2)+1] = addColumn(v[2*(layerNum-2)+1], false);
+		matrices.set(layerNum-2, addColumn(matrices.get(layerNum-2), numNeurons, true));
+		matrices.set(layerNum-1, addRow(matrices.get(layerNum-1), numNeurons, true));
+		biases.set(layerNum-2, addColumn(biases.get(layerNum-2), numNeurons, true));
+		m.set(2*(layerNum-2), addColumn(m.get(2*(layerNum-2)), numNeurons, false));
+		m.set(2*(layerNum-1), addRow(m.get(2*(layerNum-1)), numNeurons, false));
+		m.set(2*(layerNum-2)+1, addColumn(m.get(2*(layerNum-2)+1), numNeurons, false));
+		v.set(2*(layerNum-2), addColumn(v.get(2*(layerNum-2)), numNeurons, false));
+		v.set(2*(layerNum-1), addRow(v.get(2*(layerNum-1)), numNeurons, false));
+		v.set(2*(layerNum-2)+1, addColumn(v.get(2*(layerNum-2)+1), numNeurons, false));
 	}
 	
-	public Matrix addRow(Matrix matrix, boolean isNetwork){
+	public Matrix addRow(Matrix matrix, int numNeurons, boolean isNetwork){
 		int rows = matrix.numRows();
 		int col = matrix.numColumns();
-		double[][] weights = new double[rows+1][col];
+		double[][] weights = new double[rows+numNeurons][col];
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < col; j++){
 				weights[i][j] = matrix.get(i, j);
@@ -364,24 +367,28 @@ public class GrowingNN implements Cloneable{
 		}
 		double[][] newRow;
 		if(isNetwork){
-			newRow = initValues(1, col);
+			newRow = initValues(numNeurons, col);
 		}else{
-			newRow = new double[1][col];
+			newRow = new double[numNeurons][col];
 			for(int i = 0; i < col; i++){
-				newRow[0][i] = 0;
+				for(int j = 0; j < numNeurons; j++){
+					newRow[j][i] = 0;
+				}
 			}
 		}
 		for(int i = 0; i < col; i++){
-			weights[weights.length-1][i] = newRow[0][i];
+			for(int j = 0; j < numNeurons; j++){
+				weights[weights.length-numNeurons+j][i] = newRow[j][i];
+			}
 		}
 		Matrix newMatrix = new DenseMatrix(weights);
 		return newMatrix;
 	}
 	
-	public Matrix addColumn(Matrix matrix, boolean isNetwork){
+	public Matrix addColumn(Matrix matrix, int numNeurons, boolean isNetwork){
 		int rows = matrix.numRows();
 		int col = matrix.numColumns();
-		double[][] weights = new double[rows][col+1];
+		double[][] weights = new double[rows][col+numNeurons];
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < col; j++){
 				weights[i][j] = matrix.get(i, j);
@@ -389,15 +396,19 @@ public class GrowingNN implements Cloneable{
 		}
 		double[][] newCol;
 		if(isNetwork){
-			newCol = initValues(rows, 1);
+			newCol = initValues(rows, numNeurons);
 		}else{
-			newCol = new double[rows][1];
+			newCol = new double[rows][numNeurons];
 			for(int i = 0; i < rows; i++){
-				newCol[i][0] = 0;
+				for(int j = 0; j < numNeurons; j++){
+					newCol[i][j] = 0;
+				}
 			}
 		}
 		for(int i = 0; i < rows; i++){
-			weights[i][weights[i].length-1] = newCol[i][0];
+			for(int j = 0; j < numNeurons; j++){
+				weights[i][weights[i].length-numNeurons+j] = newCol[i][j];
+			}
 		}
 		Matrix newMatrix = new DenseMatrix(weights);
 		return newMatrix;
@@ -456,17 +467,17 @@ public class GrowingNN implements Cloneable{
 		return resultMatrix;
 	}
 	
-	public Matrix[] resizeBiases(Matrix[] biases, Matrix inputs){
-		double[][][] resizedArray = new double[biases.length][][];
-		Matrix[] resized = new Matrix[biases.length];
-		for(int n = 0; n < biases.length; n++){
-			resizedArray[n] = new double[inputs.numRows()][biases[n].numColumns()];
+	public ArrayList<Matrix> resizeBiases(ArrayList<Matrix> biases, Matrix inputs){
+		double[][][] resizedArray = new double[biases.size()][][];
+		ArrayList<Matrix> resized = new ArrayList<Matrix>(biases.size());
+		for(int n = 0; n < biases.size(); n++){
+			resizedArray[n] = new double[inputs.numRows()][biases.get(n).numColumns()];
 			for(int i = 0; i < resizedArray[n].length; i++){
 				for(int j = 0; j < resizedArray[n][i].length; j++){
-					resizedArray[n][i][j] = biases[n].get(0, j);
+					resizedArray[n][i][j] = biases.get(n).get(0, j);
 				}
 			}
-			resized[n] = new DenseMatrix(resizedArray[n]);
+			resized.add(new DenseMatrix(resizedArray[n]));
 		}
 		return resized;
 	}
@@ -487,25 +498,25 @@ public class GrowingNN implements Cloneable{
 			output += hiddenSize[i] + System.lineSeparator();
 		}
 		output += outputSize + System.lineSeparator();
-		for(int i = 0; i < matrices.length; i++){
-			for(int j = 0; j < matrices[i].numRows(); j++){
-				for(int k = 0; k < matrices[i].numColumns(); k++){
-					output += matrices[i].get(j, k);
-					if(k!=matrices[i].numColumns() - 1){
+		for(int i = 0; i < matrices.size(); i++){
+			for(int j = 0; j < matrices.get(i).numRows(); j++){
+				for(int k = 0; k < matrices.get(i).numColumns(); k++){
+					output += matrices.get(i).get(j, k);
+					if(k!=matrices.get(i).numColumns() - 1){
 						output += " ";
 					}
 				}
 				output += System.lineSeparator();
 			}
 			System.out.println("Finished matrix " + i);
-			for(int j = 0; j < biases[i].numRows(); j++){
-				for(int k = 0; k < biases[i].numColumns(); k++){
-					output += biases[i].get(j, k);
-					if(k!=biases[i].numColumns()-1){
+			for(int j = 0; j < biases.get(i).numRows(); j++){
+				for(int k = 0; k < biases.get(i).numColumns(); k++){
+					output += biases.get(i).get(j, k);
+					if(k!=biases.get(i).numColumns()-1){
 						output += " ";
 					}
 				}
-				if(!(i==matrices.length-1&&j==biases[i].numRows()-1)){
+				if(!(i==matrices.size()-1&&j==biases.get(i).numRows()-1)){
 					output += System.lineSeparator();
 				}
 			}
@@ -516,23 +527,23 @@ public class GrowingNN implements Cloneable{
 	
 	public GrowingNN clone(){
 		GrowingNN clone = new GrowingNN(inputSize, hiddenSize, outputSize);
-		clone.matrices = new Matrix[matrices.length];
-		clone.biases = new Matrix[biases.length];
-		for(int i = 0; i < matrices.length; i++){
-			clone.matrices[i] = matrices[i].copy();
-			clone.biases[i] = biases[i].copy();
+		clone.matrices = new ArrayList<Matrix>(matrices.size());
+		clone.biases = new ArrayList<Matrix>(biases.size());
+		for(int i = 0; i < matrices.size(); i++){
+			clone.matrices.set(i, matrices.get(i).copy());
+			clone.biases.set(i, biases.get(i).copy());
 		}
 		clone.inputLayer = inputLayer.copy();
-		clone.hiddenLayer = new Matrix[hiddenLayer.length];
-		for(int i = 0; i < hiddenLayer.length; i++){
-			clone.hiddenLayer[i] = hiddenLayer[i].copy();
+		clone.hiddenLayer = new ArrayList<Matrix>(hiddenLayer.size());
+		for(int i = 0; i < hiddenLayer.size(); i++){
+			clone.hiddenLayer.set(i, hiddenLayer.get(i).copy());
 		}
 		clone.outputLayer = outputLayer.copy();
-		clone.m = new Matrix[m.length];
-		clone.v = new Matrix[v.length];
-		for(int i = 0; i < m.length; i++){
-			clone.m[i] = m[i].copy();
-			clone.v[i] = v[i].copy();
+		clone.m = new ArrayList<Matrix>(m.size());
+		clone.v = new ArrayList<Matrix>(v.size());
+		for(int i = 0; i < m.size(); i++){
+			clone.m.set(i, m.get(i).copy());
+			clone.v.set(i, v.get(i).copy());
 		}
 		clone.t = t;
 		clone.learningRate = learningRate;
