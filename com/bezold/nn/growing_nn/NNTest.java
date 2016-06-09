@@ -11,7 +11,7 @@ public class NNTest{
 	
 	public static void xor(){
 		GrowingNN network = new GrowingNN(2, 1000, 1);
-		int epochs = 20;
+		int epochs = 400;
 		double[][] inputs = {{0,0},{0,1},{1,0},{1,1}};
 		double[][] outputs = {{0},{1},{1},{0}};
 		for(int i = 0; i < epochs; i++){
@@ -21,10 +21,10 @@ public class NNTest{
 				network.adam(input, output, network.learningRate, network.b1, network.b2, network.e);
 			}
 			double error = network.verify(inputs, outputs);
-			double output0 = network.feedForward(new double[][]{{0,0}})[0][0];
-			double output1 = network.feedForward(new double[][]{{0,1}})[0][0];
-			double output2 = network.feedForward(new double[][]{{1,0}})[0][0];
-			double output3 = network.feedForward(new double[][]{{1,1}})[0][0];
+			double output0 = network.feedForward(new double[][]{{0,0}}, 0, false)[0][0];
+			double output1 = network.feedForward(new double[][]{{0,1}}, 0, false)[0][0];
+			double output2 = network.feedForward(new double[][]{{1,0}}, 0, false)[0][0];
+			double output3 = network.feedForward(new double[][]{{1,1}}, 0, false)[0][0];
 			System.out.println("Epoch " + (i+1) + ": " + error);
 			System.out.println("0 0: " + output0);
 			System.out.println("0 1: " + output1);
@@ -35,56 +35,68 @@ public class NNTest{
 	
 	public static void growXor(){
 		GrowingNN network = new GrowingNN(2, 3, 1);
-		int epochs = 20;
+		int epochs = 400;
+		int iterator = 0;
+		int batchSize = 1;
+		int lastIterator = 0;
+		boolean endEpoch = false;
 		double[][] inputs = {{0,0},{0,1},{1,0},{1,1}};
 		double[][] outputs = {{0},{1},{1},{0}};
 		Integer[] shuffled = {0,1,2,3};
 		int newLayerNeurons = 0;
 		double currentError = 0;
-		for(int i = 0; i < epochs; i++){
-			shuffle(shuffled);
-			double startError = network.verify(inputs, outputs);
-			if(currentError != 0){
-				int numNeurons = (int) (500*(1/(1+Math.exp(0.5*((currentError-startError)-5))))*(1/(1+Math.exp(-0.5*((currentError)+5)))));
-				boolean keepAdding = true;
-				int layer = 2;
-				while(keepAdding){
-					System.out.println("Keep Adding " + (layer-2));
-					if(layer < network.hiddenSize.length+2){
-						System.out.println("if");
-						network.addNeuron(layer, numNeurons);
-						layer++;
-					}else{
-						System.out.println("else");
-						newLayerNeurons += numNeurons;
-						if(newLayerNeurons >= network.outputSize){
-							System.out.println("if2");
-							network.addLayer();
-							newLayerNeurons = 0;
+		double startError = network.verify(inputs, outputs);
+		while(iterator/inputs.length<epochs){
+			if(endEpoch){
+				shuffle(shuffled);
+				startError = network.verify(inputs, outputs);
+				endEpoch = false;
+				if(currentError != 0 && iterator-lastIterator>40){
+					lastIterator = iterator;
+					int numNeurons = (int) (500*(1/(1+Math.exp(0.5*((currentError-startError)-5))))*(1/(1+Math.exp(-0.5*((currentError)+5)))));
+					boolean keepAdding = true;
+					int layer = 2;
+					while(keepAdding){
+						System.out.println("Keep Adding " + (layer-2));
+						if(layer < network.hiddenSize.length+2){
+							System.out.println("if");
+							network.addNeuron(layer, numNeurons);
+							layer++;
+						}else{
+							System.out.println("else");
+							newLayerNeurons += numNeurons;
+							if(newLayerNeurons >= network.outputSize){
+								System.out.println("if2");
+								network.addLayer();
+								newLayerNeurons = 0;
+							}
+							keepAdding = false;
 						}
-						keepAdding = false;
+						numNeurons /= 5;
 					}
-					numNeurons /= 5;
 				}
 			}
+			
 			for(int j = 0; j < inputs.length; j++){
 				double[][] input = {inputs[shuffled[j]]};
 				double[][] output = {outputs[shuffled[j]]};
 				network.adam(input, output, network.learningRate, network.b1, network.b2, network.e);
+				iterator++;
 			}
+			endEpoch = true;
 			currentError = network.verify(inputs, outputs);
 			
-			double output0 = network.feedForward(new double[][]{{0,0}})[0][0];
-			double output1 = network.feedForward(new double[][]{{0,1}})[0][0];
-			double output2 = network.feedForward(new double[][]{{1,0}})[0][0];
-			double output3 = network.feedForward(new double[][]{{1,1}})[0][0];
+			double output0 = network.feedForward(new double[][]{{0,0}}, 0, false)[0][0];
+			double output1 = network.feedForward(new double[][]{{0,1}}, 0, false)[0][0];
+			double output2 = network.feedForward(new double[][]{{1,0}}, 0, false)[0][0];
+			double output3 = network.feedForward(new double[][]{{1,1}}, 0, false)[0][0];
 			String networkSize = "";
 			networkSize += network.inputSize + " ";
 			for(int j = 0; j < network.hiddenSize.length; j++){
 				networkSize += network.hiddenSize[j] + " ";
 			}
 			networkSize += network.outputSize;
-			System.out.println("Epoch " + (i+1) + ": " + networkSize);
+			System.out.println("Epoch " + (iterator/inputs.length+1) + ": " + networkSize);
 			System.out.println("Error: " + currentError);
 			System.out.println("0 0: " + output0);
 			System.out.println("0 1: " + output1);
