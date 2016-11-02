@@ -14,6 +14,7 @@ import no.uib.cipr.matrix.Matrix;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
+import org.jblas.FloatMatrix;
 
 import com.bezold.mnist.DigitImage;
 import com.bezold.mnist.DigitImageLoadingService;
@@ -22,7 +23,7 @@ import com.bezold.mnist.DigitImageLoadingService;
  * Hello world!
  *
  */
-public class MNIST2 
+public class MNIST 
 {
 	public GrowingNN network;
 	private static final Logger log = LogManager.getLogger();
@@ -37,7 +38,7 @@ public class MNIST2
 	    	String mnistTrainLabelFilename = "C:/Users/Beez/Downloads/MNIST/train-labels.idx1-ubyte";
 	    	String mnistTestImageFilename = "C:/Users/Beez/Downloads/MNIST/t10k-images.idx3-ubyte";
 	    	String mnistTestLabelFilename = "C:/Users/Beez/Downloads/MNIST/t10k-labels.idx1-ubyte";
-	    	MNIST2 mnist = new MNIST2();
+	    	MNIST mnist = new MNIST();
 	    	mnist.network = new GrowingNN(784, 3, 10);
 	        	mnist.train(mnistTrainLabelFilename, mnistTrainImageFilename);
 	        	mnist.test(mnistTestLabelFilename, mnistTestImageFilename);
@@ -63,8 +64,8 @@ public class MNIST2
 				mnistVerify[i-mnistTrain.length] = mnistFull[i];
 			}
 		}
-		double[][] verifyImage = new double[mnistVerify.length][784];
-		double[][] verifyLabel = new double[mnistVerify.length][10];
+		float[][] verifyImage = new float[mnistVerify.length][784];
+		float[][] verifyLabel = new float[mnistVerify.length][10];
 		int[] verifyLabelNum = new int[mnistVerify.length];
 		for(int i = 0; i < mnistVerify.length; i++){
 			verifyImage[i] = mnistVerify[i].getData();
@@ -83,8 +84,8 @@ public class MNIST2
 		int iterator = 0;
 		int epoch = 1;
 		boolean endOfEpoch = false;
-		double startError = 0;
-		double currentError = 0;
+		float startError = 0;
+		float currentError = 0;
 		DigitImage[] batch;
 		for(int num = 0; num < mnistTrain.length * numEpochs + batchSize; num += batchSize){
 			int thisSize;
@@ -145,8 +146,8 @@ public class MNIST2
 					}
 					startError = 0;
 				}
-				double[][] image = new double[batch.length][784];
-				double[][] label = new double[batch.length][10];
+				float[][] image = new float[batch.length][784];
+				float[][] label = new float[batch.length][10];
 				int[] labelNum = new int[batch.length];
 				for(int i = 0; i < batch.length; i++){
 					image[i] = batch[i].getData();
@@ -160,14 +161,14 @@ public class MNIST2
 					}
 				}
 				//train batch
-				Matrix[] g = network.adam(image, label, network.learningRate, network.b1, network.b2, network.e);
+				FloatMatrix[] g = network.adam(image, label, network.learningRate, network.b1, network.b2, network.e);
 				//verify against trained images
-				double[] accuracy = network.verify(verifyImage, verifyLabelNum);
+				float[] accuracy = network.verify(verifyImage, verifyLabelNum);
 				if(startError == 0){
 					startError = accuracy[1];
 				}
 				currentError = accuracy[1];
-				g = network.gradients(new DenseMatrix(verifyImage), new DenseMatrix(verifyLabel));
+				g = network.gradients(new FloatMatrix(verifyImage), new FloatMatrix(verifyLabel));
 				//log accuracy
 				if((((num/batchSize)%mnistTrain.length)+1)%100 == 0){
 					String shape = "" + network.inputSize;
@@ -186,7 +187,7 @@ public class MNIST2
     public void test(String labelFilename, String imageFilename) throws IOException{
         DigitImageLoadingService mnistTestImport = new DigitImageLoadingService(labelFilename, imageFilename);
 		DigitImage[] mnistTest = mnistTestImport.loadDigitImages().toArray(new DigitImage[0]);
-		double[][] image = new double[mnistTest.length][];
+		float[][] image = new float[mnistTest.length][];
 		int[] label = new int[mnistTest.length];
 		for(int i = 0; i < mnistTest.length; i++){
 			image[i] = mnistTest[i].getData();

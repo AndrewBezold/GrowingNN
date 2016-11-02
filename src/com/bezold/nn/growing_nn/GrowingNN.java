@@ -597,6 +597,14 @@ public class GrowingNN implements Cloneable{
 		newHiddenSize[newHiddenSize.length-1] = newLayerSize;
 		hiddenSize = newHiddenSize;
 		
+		int[] newLayerActivation = new int[layerActivation.length+1];
+		for(int i = 0; i < layerActivation.length-1; i++){
+			newLayerActivation[i] = layerActivation[i];
+		}
+		newLayerActivation[newLayerActivation.length-1] = layerActivation[layerActivation.length-1];
+		newLayerActivation[newLayerActivation.length-2] = newLayerActivation[0];
+		layerActivation = newLayerActivation;
+		
 		matrices.set(matrices.size()-1, addColumn(matrices.get(matrices.size()-1), newLayerSize-outputSize, true));
 		matrices.add(initWeights(newLayerSize, outputSize));
 		
@@ -714,7 +722,7 @@ public class GrowingNN implements Cloneable{
 	}
 	
 	public float[][] initValues(int rows, int col){
-		float[][] weights = new float[col][rows];
+		float[][] weights = new float[rows][col];
 		for(int i = 0; i < weights.length; i++){
 			for(int j = 0; j < weights[i].length; j++){
 				weights[i][j] = (float) (Math.random() * .2 - .1);

@@ -1,36 +1,53 @@
 package com.bezold.nn.growing_nn;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+
 import no.uib.cipr.matrix.Matrix;
 
-public class NNTest{
+public class Numerai{
 	
 	public static void main(String[] args){
-		xor();
-		growXor();
+		numerai();
 	}
 	
-	public static void xor(){
-		GrowingNN network = new GrowingNN(2, 1000, 1);
-		int epochs = 400;
-		double[][] inputs = {{0,0},{0,1},{1,0},{1,1}};
-		double[][] outputs = {{0},{1},{1},{0}};
+	public static void numerai(){
+		GrowingNN network = new GrowingNN(21, new int[]{50, 50, 50}, 1);
+		int epochs = 100;
+		float[][] inputs = new float[96320][21];
+		float[][] outputs = new float[96320][1];
+		
+		try{
+			String filename = "/home/beez/Documents/numerai_training_data.csv";
+			File file = new File(filename);
+			BufferedReader reader = new BufferedReader(new FileReader(file));
+			reader.readLine();
+			for(int i = 0; i < inputs.length; i++){
+				String line = reader.readLine();
+				String[] data = line.split(",");
+				float[] numbers = new float[data.length-1];
+				for(int j = 0; j < numbers.length; j++){
+					numbers[j] = Float.parseFloat(data[j]);
+				}
+				inputs[i] = numbers;
+				outputs[i][0] = Float.parseFloat(data[data.length-1]);
+			}
+			reader.close();
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
 		for(int i = 0; i < epochs; i++){
+			System.out.println("Epoch: " + i);
 			for(int j = 0; j < inputs.length; j++){
-				double[][] input = {inputs[j]};
-				double[][] output = {outputs[j]};
+				float[][] input = {inputs[j]};
+				float[][] output = {outputs[j]};
 				network.adam(input, output, network.learningRate, network.b1, network.b2, network.e);
 			}
-			double error = network.verify(inputs, outputs);
-			double output0 = network.feedForward(new double[][]{{0,0}}, 0, false)[0][0];
-			double output1 = network.feedForward(new double[][]{{0,1}}, 0, false)[0][0];
-			double output2 = network.feedForward(new double[][]{{1,0}}, 0, false)[0][0];
-			double output3 = network.feedForward(new double[][]{{1,1}}, 0, false)[0][0];
-			System.out.println("Epoch " + (i+1) + ": " + error);
-			System.out.println("0 0: " + output0);
-			System.out.println("0 1: " + output1);
-			System.out.println("1 0: " + output2);
-			System.out.println("1 1: " + output3);
 		}
+		float error = network.verify(inputs, outputs)[0];
+		System.out.println("Accuracy: " + error);
 	}
 	
 	public static void growXor(){
@@ -40,16 +57,16 @@ public class NNTest{
 		int batchSize = 1;
 		int lastIterator = 0;
 		boolean endEpoch = false;
-		double[][] inputs = {{0,0},{0,1},{1,0},{1,1}};
-		double[][] outputs = {{0},{1},{1},{0}};
+		float[][] inputs = {{0,0},{0,1},{1,0},{1,1}};
+		float[][] outputs = {{0},{1},{1},{0}};
 		Integer[] shuffled = {0,1,2,3};
 		int newLayerNeurons = 0;
-		double currentError = 0;
-		double startError = network.verify(inputs, outputs);
+		float currentError = 0;
+		float startError = network.verify(inputs, outputs)[0];
 		while(iterator/inputs.length<epochs){
 			if(endEpoch){
 				shuffle(shuffled);
-				startError = network.verify(inputs, outputs);
+				startError = network.verify(inputs, outputs)[0];
 				endEpoch = false;
 				if(currentError != 0 && iterator-lastIterator>40){
 					lastIterator = iterator;
@@ -78,18 +95,18 @@ public class NNTest{
 			}
 			
 			for(int j = 0; j < inputs.length; j++){
-				double[][] input = {inputs[shuffled[j]]};
-				double[][] output = {outputs[shuffled[j]]};
+				float[][] input = {inputs[shuffled[j]]};
+				float[][] output = {outputs[shuffled[j]]};
 				network.adam(input, output, network.learningRate, network.b1, network.b2, network.e);
 				iterator++;
 			}
 			endEpoch = true;
-			currentError = network.verify(inputs, outputs);
+			currentError = network.verify(inputs, outputs)[0];
 			
-			double output0 = network.feedForward(new double[][]{{0,0}}, 0, false)[0][0];
-			double output1 = network.feedForward(new double[][]{{0,1}}, 0, false)[0][0];
-			double output2 = network.feedForward(new double[][]{{1,0}}, 0, false)[0][0];
-			double output3 = network.feedForward(new double[][]{{1,1}}, 0, false)[0][0];
+			float output0 = network.feedForward(new float[][]{{0,0}}, 0, false)[0][0];
+			float output1 = network.feedForward(new float[][]{{0,1}}, 0, false)[0][0];
+			float output2 = network.feedForward(new float[][]{{1,0}}, 0, false)[0][0];
+			float output3 = network.feedForward(new float[][]{{1,1}}, 0, false)[0][0];
 			String networkSize = "";
 			networkSize += network.inputSize + " ";
 			for(int j = 0; j < network.hiddenSize.length; j++){

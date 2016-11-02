@@ -9,12 +9,12 @@ package com.bezold.mnist;
 public class DigitImage {
 
     private int label;
-    private double[] data;
+    private float[] data;
 
     public DigitImage(int label, byte[] data) {
         this.label = label;
 
-        this.data = new double[data.length];
+        this.data = new float[data.length];
 
         for(int i = 0; i < this.data.length; i++) {
         }
@@ -24,7 +24,7 @@ public class DigitImage {
         return label;
     }
 
-    public double[] getData() {
+    public float[] getData() {
         return data;
     }
 }
