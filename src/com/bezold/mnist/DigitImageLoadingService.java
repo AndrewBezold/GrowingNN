@@ -110,7 +110,6 @@ public class DigitImageLoadingService {
 
             images.add(new DigitImage(label, imageData));
         }
-
         return images;
     }
 }

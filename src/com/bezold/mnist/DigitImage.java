@@ -17,6 +17,8 @@ public class DigitImage {
         this.data = new float[data.length];
 
         for(int i = 0; i < this.data.length; i++) {
+        	
+        	this.data[i] = data[i] & 0xFF; //convert to unsigned
         }
     }
 
